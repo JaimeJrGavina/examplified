@@ -1,0 +1,4 @@
+To: seolearnerph@gmail.com
+Subject: Welcome
+
+Welcome! Your access token: Token: cust_b7dd83a83b398a9fff2b53d2

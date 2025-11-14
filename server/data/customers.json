@@ -1,0 +1,21 @@
+{
+  "customers": [
+    {
+      "id": "cust-1763027624928",
+      "email": "seolearnerph@gmail.com",
+      "token": "cust_b7dd83a83b398a9fff2b53d2",
+      "status": "active",
+      "createdAt": "2025-11-13T09:53:44.928Z",
+      "lastLogin": null
+    },
+    {
+      "id": "cust-1763085850994",
+      "email": "test@gmail.com",
+      "token": "cust_aa3a19d41908bfb2c51000bb",
+      "status": "active",
+      "createdAt": "2025-11-14T02:04:10.994Z",
+      "lastLogin": null
+    }
+  ],
+  "recoveryTokens": []
+}

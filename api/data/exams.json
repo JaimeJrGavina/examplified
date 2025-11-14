@@ -1,0 +1,67 @@
+[
+  {
+    "title": "Test Exam",
+    "subject": "Torts",
+    "description": "",
+    "durationMinutes": 30,
+    "questions": [
+      {
+        "id": "q1",
+        "text": "Sample Q",
+        "modelAnswer": "Sample A"
+      }
+    ],
+    "createdBy": "admin",
+    "id": "exam-1763018378741",
+    "createdAt": "2025-11-13T07:19:38.741Z",
+    "updatedAt": "2025-11-13T07:19:38.741Z"
+  },
+  {
+    "title": "Criminal Law",
+    "subject": "fbfbfdbdf",
+    "description": "bdbdbd",
+    "durationMinutes": 60,
+    "questions": [
+      {
+        "id": "q1",
+        "text": "bdbfbdb",
+        "type": "ESSAY",
+        "modelAnswer": "bdbdfbdfbd"
+      },
+      {
+        "id": "q1763018661932",
+        "text": "bdbfbdbdb",
+        "type": "ESSAY",
+        "modelAnswer": "bdbfbdbd"
+      }
+    ],
+    "createdBy": "admin",
+    "id": "exam-1763018669834",
+    "createdAt": "2025-11-13T07:24:29.834Z",
+    "updatedAt": "2025-11-13T07:24:29.834Z"
+  },
+  {
+    "title": "vbdbbhrbhr",
+    "subject": "hrthbrthrthrt",
+    "description": "hrthrthrthrthr",
+    "durationMinutes": 60,
+    "questions": [
+      {
+        "id": "q1",
+        "text": "hrhrhrthth",
+        "type": "ESSAY",
+        "modelAnswer": "hrhthhtrhrt"
+      },
+      {
+        "id": "q1763086424544",
+        "text": "hrhrthrhrthrth",
+        "type": "ESSAY",
+        "modelAnswer": "hrthrthrthrthrr"
+      }
+    ],
+    "createdBy": "admin",
+    "id": "exam-1763086431836",
+    "createdAt": "2025-11-14T02:13:51.836Z",
+    "updatedAt": "2025-11-14T02:13:51.836Z"
+  }
+]

@@ -1,0 +1,4 @@
+To: test@gmail.com
+Subject: Welcome
+
+Welcome! Your access token: Token: cust_aa3a19d41908bfb2c51000bb

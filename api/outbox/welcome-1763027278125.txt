@@ -1,0 +1,4 @@
+To: student@test.com
+Subject: Welcome
+
+Welcome! Your access token: Token: cust_ca93c37fee31bb8d16efd48c
