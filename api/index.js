@@ -272,6 +272,7 @@ app.get('/exams/:id', async (req, res) => {
 });
 
 // Export for Vercel (serverless functions)
+// When running as serverless function, Vercel passes req/res directly
 export default app;
 
 // Only listen locally (not on Vercel serverless)
