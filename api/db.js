@@ -18,22 +18,23 @@ if (!fs.existsSync(DATA_DIR)) {
 // Falls back to file-based storage otherwise
 let kv = null;
 let usingKV = false;
-let kvInitialized = false;
 
-(async () => {
+// Initialize KV on first use (lazy loading)
+async function initializeKV() {
+  if (kv !== null) return; // Already initialized
   try {
     const { kv: kvClient } = await import('@vercel/kv');
     kv = kvClient;
     if (kv) {
       usingKV = true;
-      kvInitialized = true;
       console.log('✓ Vercel KV initialized for exams');
     }
   } catch (err) {
     console.log('ℹ️  Vercel KV not available for exams, using file-based storage');
+    kv = null;
     usingKV = false;
   }
-})();
+}
 
 // KV key for exams storage
 const EXAMS_KEY = 'examplified:exams';
@@ -42,7 +43,7 @@ const EXAMS_KEY = 'examplified:exams';
 let localExamsCache = null;
 
 async function loadExams() {
-  
+  await initializeKV();
   try {
     if (usingKV && kv) {
       const data = await kv.get(EXAMS_KEY);
@@ -65,6 +66,7 @@ async function loadExams() {
 }
 
 async function saveExams(exams) {
+  await initializeKV();
   try {
     if (usingKV && kv) {
       // Save to Vercel KV (no expiration, persistent)

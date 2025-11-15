@@ -157,16 +157,24 @@ app.post('/admin/codes', adminAuth, (req, res) => {
 // Protected: Manage customers (admin)
 app.post('/admin/customers', adminAuth, async (req, res) => {
   const { email } = req.body || {};
-  if (!email) return res.status(400).json({ error: 'email required' });
+  if (!email) {
+    console.error('[admin/customers] No email provided');
+    return res.status(400).json({ error: 'email required' });
+  }
   try {
-    console.log('[admin] Creating customer for email:', email);
+    console.log('[admin/customers] Creating customer for email:', email);
     const customer = await customers.createCustomer({ email });
-    console.log('[admin] Customer created successfully:', customer.id);
+    console.log('[admin/customers] Customer created successfully:', customer.id, customer.token);
     // send welcome email with token
-    try { mailer.sendWelcome(customer.email, customer.token); } catch (e) { /* ignore mail errors */ }
+    try { 
+      console.log('[admin/customers] Sending welcome email to', email);
+      mailer.sendWelcome(customer.email, customer.token); 
+    } catch (e) { 
+      console.warn('[admin/customers] Email send failed:', e.message);
+    }
     res.status(201).json({ ok: true, customer });
   } catch (err) {
-    console.error('[admin] Error creating customer:', err.message, err.stack);
+    console.error('[admin/customers] Error creating customer:', err.message, err.stack);
     res.status(400).json({ error: err.message });
   }
 });

@@ -4,22 +4,23 @@ import crypto from 'crypto';
 // Falls back to in-memory storage otherwise
 let kv = null;
 let usingKV = false;
-let kvInitialized = false;
 
-(async () => {
+// Initialize KV on first use (lazy loading)
+async function initializeKV() {
+  if (kv !== null) return; // Already initialized
   try {
     const { kv: kvClient } = await import('@vercel/kv');
     kv = kvClient;
     if (kv) {
       usingKV = true;
-      kvInitialized = true;
       console.log('✓ Vercel KV initialized');
     }
   } catch (err) {
     console.log('ℹ️  Vercel KV not available, using in-memory storage');
+    kv = null;
     usingKV = false;
   }
-})();
+}
 
 // Keys used in Vercel KV
 const CUSTOMERS_KEY = 'examplified:customers';
@@ -29,6 +30,7 @@ const RECOVERY_TOKENS_KEY = 'examplified:recovery-tokens';
 let localDataCache = null;
 
 async function load() {
+  await initializeKV();
   try {
     if (usingKV && kv) {
       const data = await kv.get(CUSTOMERS_KEY);
@@ -46,6 +48,7 @@ async function load() {
 }
 
 async function save(data) {
+  await initializeKV();
   try {
     if (usingKV && kv) {
       // Save to Vercel KV (no expiration, persistent)
