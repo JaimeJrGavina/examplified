@@ -27,7 +27,7 @@ const App: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
         const [customerEmail, setCustomerEmail] = useState<string | null>(sessionStorage.getItem('customerEmail'));
         const [adminToken, setAdminToken] = useState<string | null>(sessionStorage.getItem('adminToken'));
-        const [recoveryOpen, setRecoveryOpen] = useState(false);
+        const [isSubmitting, setIsSubmitting] = useState(false);
         const [currentRoute, setCurrentRoute] = useState<string>(window.location.pathname);
 
     // Load exams from backend on app startup
@@ -211,16 +211,51 @@ const App: React.FC = () => {
     });
   };
 
-  const handleSubmitExam = () => {
-     console.log('✓ handleSubmitExam called');
-     if (!session) {
-       console.error('❌ No session available');
-       return;
-     }
-     console.log('✓ Session exists, marking as completed');
-     setSession(prev => prev ? ({ ...prev, isCompleted: true }) : null);
-     console.log('✓ Setting view to RESULT');
-     setView('RESULT');
+  const handleSubmitExam = async () => {
+    console.log('✓ handleSubmitExam called');
+    
+    // Prevent double submission
+    if (isSubmitting) {
+      console.warn('⚠️ Submission already in progress, ignoring double click');
+      return;
+    }
+    
+    if (!session) {
+      console.error('❌ No session available - cannot submit');
+      alert('Error: No exam session found. Please start an exam first.');
+      return;
+    }
+    
+    if (!currentExam) {
+      console.error('❌ No exam data available - cannot submit');
+      alert('Error: No exam data found. Please try again.');
+      return;
+    }
+    
+    try {
+      setIsSubmitting(true);
+      console.log('✓ Session exists, marking as completed');
+      
+      // Update session state
+      setSession(prev => {
+        if (!prev) {
+          console.error('❌ Session became null during submission');
+          return null;
+        }
+        return { ...prev, isCompleted: true };
+      });
+      
+      // Small delay to ensure state updates
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      console.log('✓ Transitioning to RESULT view');
+      setView('RESULT');
+      
+    } catch (err) {
+      console.error('❌ Error during submission:', err);
+      alert('An error occurred while submitting your exam. Please try again.');
+      setIsSubmitting(false);
+    }
   };
 
   const navigateQuestion = (direction: 'prev' | 'next') => {
