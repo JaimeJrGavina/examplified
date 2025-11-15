@@ -1,4 +1,5 @@
 
+// Updated: Nov 15 2025 - Email/password login
 import React, { useState, useEffect } from 'react';
 import { ViewState, Exam, ExamSession } from './types';
 import { generateExamQuestions } from './services/geminiService';
