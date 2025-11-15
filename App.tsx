@@ -284,6 +284,7 @@ const App: React.FC = () => {
   }
 
   if (view === 'RESULT' && session && currentExam) {
+      console.log('✓ Rendering RESULT view');
       return <ExamResult session={session} exam={currentExam} onReturnToDashboard={() => setView('DASHBOARD')} />;
   }
 
@@ -291,6 +292,7 @@ const App: React.FC = () => {
         const currentQ = currentExam.questions[currentQuestionIndex];
         const isFlagged = session.flaggedQuestions.has(currentQ.id);
         const isLastQuestion = currentQuestionIndex === currentExam.questions.length - 1;
+        console.log(`📝 Question ${currentQuestionIndex + 1}/${currentExam.questions.length}, isLastQuestion: ${isLastQuestion}`);
 
         return (
           <div className="min-h-screen bg-[#f8f9fa] relative">
