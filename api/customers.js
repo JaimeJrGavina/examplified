@@ -1,5 +1,13 @@
 import crypto from 'crypto';
-import { kv } from '@vercel/kv';
+
+// Try to import Vercel KV, with fallback for local development
+let kv = null;
+try {
+  const kvModule = await import('@vercel/kv');
+  kv = kvModule.kv;
+} catch (err) {
+  console.log('ℹ️  Vercel KV module not available');
+}
 
 // Keys used in Vercel KV
 const CUSTOMERS_KEY = 'examplified:customers';
@@ -10,6 +18,12 @@ let localDataCache = null;
 let usingKV = false;
 
 async function initKV() {
+  if (!kv) {
+    console.log('ℹ️  Vercel KV not available, using in-memory storage (local development)');
+    usingKV = false;
+    return false;
+  }
+  
   try {
     // Test KV connection
     await kv.set('_test_connection', '1', { ex: 1 });
@@ -17,18 +31,25 @@ async function initKV() {
     console.log('✓ Vercel KV connected');
     return true;
   } catch (err) {
-    console.log('ℹ️  Vercel KV not available, using in-memory storage (local development)');
+    console.log('⚠️  Vercel KV connection failed:', err.message);
+    console.log('ℹ️  Using in-memory storage as fallback');
     usingKV = false;
     return false;
   }
 }
 
-// Initialize KV on module load
-initKV();
+// Initialize KV on first use (not on module load)
+let kvInitialized = false;
 
 async function load() {
+  // Initialize KV on first call
+  if (!kvInitialized) {
+    await initKV();
+    kvInitialized = true;
+  }
+  
   try {
-    if (usingKV) {
+    if (usingKV && kv) {
       const data = await kv.get(CUSTOMERS_KEY);
       if (data) return data;
     } else {
@@ -45,7 +66,7 @@ async function load() {
 
 async function save(data) {
   try {
-    if (usingKV) {
+    if (usingKV && kv) {
       // Save to Vercel KV (no expiration, persistent)
       await kv.set(CUSTOMERS_KEY, data);
       return true;

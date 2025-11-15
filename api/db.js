@@ -4,7 +4,6 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { kv } from '@vercel/kv';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, 'data');
@@ -15,6 +14,15 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
+// Try to import Vercel KV, with fallback for local development
+let kv = null;
+try {
+  const kvModule = await import('@vercel/kv');
+  kv = kvModule.kv;
+} catch (err) {
+  console.log('ℹ️  Vercel KV module not available');
+}
+
 // KV key for exams storage
 const EXAMS_KEY = 'examplified:exams';
 
@@ -23,6 +31,12 @@ let localExamsCache = null;
 let usingKV = false;
 
 async function initKV() {
+  if (!kv) {
+    console.log('ℹ️  Vercel KV not available for exams, using file-based storage (local development)');
+    usingKV = false;
+    return false;
+  }
+  
   try {
     // Test KV connection
     await kv.set('_test_connection', '1', { ex: 1 });
@@ -30,18 +44,25 @@ async function initKV() {
     console.log('✓ Vercel KV connected for exams');
     return true;
   } catch (err) {
-    console.log('ℹ️  Vercel KV not available for exams, using file-based storage (local development)');
+    console.log('⚠️  Vercel KV connection failed for exams:', err.message);
+    console.log('ℹ️  Using file-based storage as fallback');
     usingKV = false;
     return false;
   }
 }
 
-// Initialize KV on module load
-initKV();
+// Initialize KV on first use (not on module load)
+let kvInitialized = false;
 
 async function loadExams() {
+  // Initialize KV on first call
+  if (!kvInitialized) {
+    await initKV();
+    kvInitialized = true;
+  }
+  
   try {
-    if (usingKV) {
+    if (usingKV && kv) {
       const data = await kv.get(EXAMS_KEY);
       if (data) return data;
     } else {
@@ -63,7 +84,7 @@ async function loadExams() {
 
 async function saveExams(exams) {
   try {
-    if (usingKV) {
+    if (usingKV && kv) {
       // Save to Vercel KV (no expiration, persistent)
       await kv.set(EXAMS_KEY, exams);
       return true;
