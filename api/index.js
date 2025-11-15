@@ -260,6 +260,9 @@ app.get('/exams/:id', (req, res) => {
   res.json({ ok: true, exam });
 });
 
+// Export for Vercel (serverless functions)
+export default app;
+
 const port = process.env.PORT || 4000;
 app.listen(port, () => {
   console.log(`\n✓ Backend server running on http://localhost:${port}`);
