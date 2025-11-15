@@ -316,8 +316,12 @@ const App: React.FC = () => {
                 timeLeftSeconds={timeLeft}
                 onToggleHideExam={() => setIsExamHidden(true)}
                 onSubmit={() => {
+                    console.log('🔔 Submit button clicked from ExamHeader');
                     if(window.confirm("Are you sure you want to submit your exam?")) {
+                        console.log('✓ User confirmed submission');
                         handleSubmitExam();
+                    } else {
+                        console.log('✗ User canceled submission');
                     }
                 }}
             />
@@ -377,8 +381,12 @@ const App: React.FC = () => {
                             {isLastQuestion ? (
                                 <button
                                     onClick={() => {
+                                        console.log('🔔 Submit button clicked from footer');
                                         if(window.confirm("Are you sure you want to submit your exam?")) {
+                                            console.log('✓ User confirmed submission from footer');
                                             handleSubmitExam();
+                                        } else {
+                                            console.log('✗ User canceled submission from footer');
                                         }
                                     }}
                                     className="h-full px-8 bg-green-600 hover:bg-green-700 text-white font-bold tracking-wide ml-2 transition-colors"
