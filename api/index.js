@@ -3,6 +3,7 @@ Backend dashboard and admin API server.
 - Protected admin routes using Bearer token authentication.
 - Signed-challenge auth for customer accounts (future).
 - Email-based recovery for admin.
+- Version: 2025-11-15 (Fresh StudentLogin component deployed)
 */
 
 import express from 'express';
