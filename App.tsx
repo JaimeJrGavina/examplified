@@ -50,6 +50,24 @@ const App: React.FC = () => {
         loadExams();
     }, []);
 
+    // Monitor sessionStorage for token changes
+    useEffect(() => {
+        const token = sessionStorage.getItem('customerToken');
+        if (token) {
+            setCustomerToken(token);
+            console.log('✓ Customer token detected:', token);
+        }
+    }, []);
+
+    // Monitor sessionStorage for admin token changes
+    useEffect(() => {
+        const token = sessionStorage.getItem('adminToken');
+        if (token) {
+            setAdminToken(token);
+            console.log('✓ Admin token detected:', token);
+        }
+    }, []);
+
     // Handle route changes
     useEffect(() => {
       const handleRouteChange = () => {
