@@ -72,6 +72,11 @@ const CustomerLogin: React.FC<CustomerLoginProps> = ({ onLogin, openRecovery }) 
         <div className="text-center mt-6">
           <a href="#" onClick={(e) => { e.preventDefault(); openRecovery(); }} className="text-sm text-blue-600 hover:underline">Forgot or lost your token?</a>
         </div>
+
+        <div className="text-center mt-4 pt-4 border-t border-gray-200">
+          <p className="text-sm text-gray-600 mb-2">Are you an administrator?</p>
+          <a href="#" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/admin'); window.location.reload(); }} className="text-sm text-orange-600 hover:underline font-semibold">Admin Login</a>
+        </div>
       </div>
     </div>
   );
