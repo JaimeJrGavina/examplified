@@ -24,7 +24,7 @@ const App: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true); 
   const [isExamHidden, setIsExamHidden] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-        const [customerToken, setCustomerToken] = useState<string | null>(sessionStorage.getItem('customerToken'));
+        const [customerEmail, setCustomerEmail] = useState<string | null>(sessionStorage.getItem('customerEmail'));
         const [adminToken, setAdminToken] = useState<string | null>(sessionStorage.getItem('adminToken'));
         const [recoveryOpen, setRecoveryOpen] = useState(false);
         const [currentRoute, setCurrentRoute] = useState<string>(window.location.pathname);
@@ -50,12 +50,12 @@ const App: React.FC = () => {
         loadExams();
     }, []);
 
-    // Monitor sessionStorage for token changes
+    // Monitor sessionStorage for email changes
     useEffect(() => {
-        const token = sessionStorage.getItem('customerToken');
-        if (token) {
-            setCustomerToken(token);
-            console.log('✓ Customer token detected:', token);
+        const email = sessionStorage.getItem('customerEmail');
+        if (email) {
+            setCustomerEmail(email);
+            console.log('✓ Customer email detected:', email);
         }
     }, []);
 
@@ -393,7 +393,7 @@ const App: React.FC = () => {
     }
 
   // Default student dashboard view
-  if (customerToken || adminToken) {
+  if (customerEmail || adminToken) {
     return (
       <Dashboard
         exams={availableExams}
@@ -409,14 +409,14 @@ const App: React.FC = () => {
     );
   }
 
-  // No customer token and not on admin route - show customer login
+  // No customer email and not on admin route - show customer login
   if (recoveryOpen) {
     return <CustomerRecovery onClose={() => setRecoveryOpen(false)} />;
   }
 
-  return <CustomerLogin onLogin={(token) => {
-    sessionStorage.setItem('customerToken', token);
-    setCustomerToken(token);
+  return <CustomerLogin onLogin={(email) => {
+    sessionStorage.setItem('customerEmail', email);
+    setCustomerEmail(email);
   }} openRecovery={() => setRecoveryOpen(true)} />;
 };
 
