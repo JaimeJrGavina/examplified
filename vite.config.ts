@@ -19,6 +19,7 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        allowedHosts: ['*.replit.dev', 'localhost'],
         proxy: {
           '/admin/': {
             target: 'http://localhost:3001',
