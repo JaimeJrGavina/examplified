@@ -212,8 +212,14 @@ const App: React.FC = () => {
   };
 
   const handleSubmitExam = () => {
-     if (!session) return;
+     console.log('✓ handleSubmitExam called');
+     if (!session) {
+       console.error('❌ No session available');
+       return;
+     }
+     console.log('✓ Session exists, marking as completed');
      setSession(prev => prev ? ({ ...prev, isCompleted: true }) : null);
+     console.log('✓ Setting view to RESULT');
      setView('RESULT');
   };
 
