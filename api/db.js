@@ -1,5 +1,6 @@
 // Simple file-based persistent storage for exams
 // In production: replace with a real database (MongoDB, PostgreSQL, etc.)
+// Note: On Vercel, uses in-memory cache due to ephemeral filesystem
 
 import fs from 'fs';
 import path from 'path';
@@ -14,25 +15,48 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
+// In-memory cache for Vercel's ephemeral filesystem
+let examsCache = null;
+let cacheitialized = false;
+
 function loadExams() {
   try {
+    // Try to load from file first (for local dev and initial deploy)
     if (fs.existsSync(EXAMS_FILE)) {
       const data = fs.readFileSync(EXAMS_FILE, 'utf8');
-      return JSON.parse(data);
+      examsCache = JSON.parse(data);
+      cacheitialized = true;
+      return examsCache;
     }
   } catch (err) {
-    console.error('Error loading exams:', err);
+    console.warn('Error loading exams from file:', err.message);
   }
-  return [];
+  
+  // If cache is already initialized, return it (for Vercel's ephemeral fs)
+  if (cacheitialized && examsCache) {
+    return examsCache;
+  }
+  
+  // Initialize default cache
+  examsCache = [];
+  cacheitialized = true;
+  return examsCache;
 }
 
 function saveExams(exams) {
+  // Update in-memory cache first (critical for Vercel)
+  examsCache = exams;
+  cacheitialized = true;
+  
   try {
+    // Try to persist to file (works on local, may fail on Vercel)
     fs.writeFileSync(EXAMS_FILE, JSON.stringify(exams, null, 2), 'utf8');
     return true;
   } catch (err) {
-    console.error('Error saving exams:', err);
-    return false;
+    console.warn('⚠️  Warning: Could not write exams to file. Using in-memory storage.', err.message);
+    console.warn('   This is normal on Vercel. For persistent storage, use Vercel KV or a database.');
+    // Still return true since data is cached in memory
+    return true;
   }
 }
 

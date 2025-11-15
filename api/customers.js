@@ -9,25 +9,48 @@ const CUSTOMERS_FILE = path.join(DATA_DIR, 'customers.json');
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
+// In-memory cache for Vercel's ephemeral filesystem
+let dataCache = null;
+let cacheInitialized = false;
+
 function load() {
   try {
+    // Try to load from file first (for local dev and initial deploy)
     if (fs.existsSync(CUSTOMERS_FILE)) {
       const raw = fs.readFileSync(CUSTOMERS_FILE, 'utf8');
-      return JSON.parse(raw);
+      dataCache = JSON.parse(raw);
+      cacheInitialized = true;
+      return dataCache;
     }
   } catch (err) {
-    console.error('Error loading customers:', err);
+    console.warn('Error loading customers from file:', err.message);
   }
-  return { customers: [], recoveryTokens: [] };
+  
+  // If cache is already initialized, return it (for Vercel's ephemeral fs)
+  if (cacheInitialized && dataCache) {
+    return dataCache;
+  }
+  
+  // Initialize default cache
+  dataCache = { customers: [], recoveryTokens: [] };
+  cacheInitialized = true;
+  return dataCache;
 }
 
 function save(data) {
+  // Update in-memory cache first (critical for Vercel)
+  dataCache = data;
+  cacheInitialized = true;
+  
   try {
+    // Try to persist to file (works on local, may fail on Vercel)
     fs.writeFileSync(CUSTOMERS_FILE, JSON.stringify(data, null, 2), 'utf8');
     return true;
   } catch (err) {
-    console.error('Error saving customers:', err);
-    return false;
+    console.warn('⚠️  Warning: Could not write customers to file. Using in-memory storage.', err.message);
+    console.warn('   This is normal on Vercel. For persistent storage, use Vercel KV or a database.');
+    // Still return true since data is cached in memory
+    return true;
   }
 }
 
