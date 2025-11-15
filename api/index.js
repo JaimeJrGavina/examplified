@@ -266,33 +266,36 @@ app.get('/exams/:id', async (req, res) => {
 // Export for Vercel (serverless functions)
 export default app;
 
-const port = process.env.PORT || 4000;
-app.listen(port, () => {
-  console.log(`\n✓ Backend server running on http://localhost:${port}`);
-  console.log(`\nProtected routes (require Bearer token):`);
-  console.log(`  GET    /admin`);
-  console.log(`  GET    /admin/exams`);
-  console.log(`  GET    /admin/exams/:id`);
-  console.log(`  POST   /admin/exams`);
-  console.log(`  PUT    /admin/exams/:id`);
-  console.log(`  DELETE /admin/exams/:id`);
-  console.log(`  GET    /admin/stats`);
-  console.log(`  POST   /admin/codes`);
-  console.log(`  GET    /admin/customers`);
-  console.log(`  POST   /admin/customers`);
-  console.log(`  DELETE /admin/customers/:id`);
-  console.log(`  POST   /admin/customers/:id/regenerate-token`);
-  console.log(`\nPublic routes (no auth):`);
-  console.log(`  GET    /health`);
-  console.log(`  GET    /exams`);
-  console.log(`  GET    /exams/:id`);
-  console.log(`  POST   /customer-access`);
-  console.log(`  POST   /customer-login`);
-  console.log(`  POST   /customer-recover`);
-  console.log(`  GET    /customer-recover/:token`);
-  console.log(`  POST   /customer-recover/:token/reset`);
-  console.log(`\nTo access protected routes, include header:`);
-  console.log(`  Authorization: Bearer <your-admin-token>`);
-  console.log(`\nExams stored in: ${path.join(__dirname, 'data', 'exams.json')}`);
-  console.log('\n');
-});
+// Only listen locally (not on Vercel serverless)
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  const port = process.env.PORT || 4000;
+  app.listen(port, () => {
+    console.log(`\n✓ Backend server running on http://localhost:${port}`);
+    console.log(`\nProtected routes (require Bearer token):`);
+    console.log(`  GET    /admin`);
+    console.log(`  GET    /admin/exams`);
+    console.log(`  GET    /admin/exams/:id`);
+    console.log(`  POST   /admin/exams`);
+    console.log(`  PUT    /admin/exams/:id`);
+    console.log(`  DELETE /admin/exams/:id`);
+    console.log(`  GET    /admin/stats`);
+    console.log(`  POST   /admin/codes`);
+    console.log(`  GET    /admin/customers`);
+    console.log(`  POST   /admin/customers`);
+    console.log(`  DELETE /admin/customers/:id`);
+    console.log(`  POST   /admin/customers/:id/regenerate-token`);
+    console.log(`\nPublic routes (no auth):`);
+    console.log(`  GET    /health`);
+    console.log(`  GET    /exams`);
+    console.log(`  GET    /exams/:id`);
+    console.log(`  POST   /customer-access`);
+    console.log(`  POST   /customer-login`);
+    console.log(`  POST   /customer-recover`);
+    console.log(`  GET    /customer-recover/:token`);
+    console.log(`  POST   /customer-recover/:token/reset`);
+    console.log(`\nTo access protected routes, include header:`);
+    console.log(`  Authorization: Bearer <your-admin-token>`);
+    console.log(`\nExams stored in: ${path.join(__dirname, 'data', 'exams.json')}`);
+    console.log('\n');
+  });
+}
