@@ -1,56 +1,63 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import crypto from 'crypto';
+import { kv } from '@vercel/kv';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(__dirname, 'data');
-const CUSTOMERS_FILE = path.join(DATA_DIR, 'customers.json');
+// Keys used in Vercel KV
+const CUSTOMERS_KEY = 'examplified:customers';
+const RECOVERY_TOKENS_KEY = 'examplified:recovery-tokens';
 
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+// In-memory fallback for local development when KV is not available
+let localDataCache = null;
+let usingKV = false;
 
-// In-memory cache for Vercel's ephemeral filesystem
-let dataCache = null;
-let cacheInitialized = false;
-
-function load() {
+async function initKV() {
   try {
-    // Try to load from file first (for local dev and initial deploy)
-    if (fs.existsSync(CUSTOMERS_FILE)) {
-      const raw = fs.readFileSync(CUSTOMERS_FILE, 'utf8');
-      dataCache = JSON.parse(raw);
-      cacheInitialized = true;
-      return dataCache;
-    }
+    // Test KV connection
+    await kv.set('_test_connection', '1', { ex: 1 });
+    usingKV = true;
+    console.log('✓ Vercel KV connected');
+    return true;
   } catch (err) {
-    console.warn('Error loading customers from file:', err.message);
+    console.log('ℹ️  Vercel KV not available, using in-memory storage (local development)');
+    usingKV = false;
+    return false;
   }
-  
-  // If cache is already initialized, return it (for Vercel's ephemeral fs)
-  if (cacheInitialized && dataCache) {
-    return dataCache;
-  }
-  
-  // Initialize default cache
-  dataCache = { customers: [], recoveryTokens: [] };
-  cacheInitialized = true;
-  return dataCache;
 }
 
-function save(data) {
-  // Update in-memory cache first (critical for Vercel)
-  dataCache = data;
-  cacheInitialized = true;
-  
+// Initialize KV on module load
+initKV();
+
+async function load() {
   try {
-    // Try to persist to file (works on local, may fail on Vercel)
-    fs.writeFileSync(CUSTOMERS_FILE, JSON.stringify(data, null, 2), 'utf8');
-    return true;
+    if (usingKV) {
+      const data = await kv.get(CUSTOMERS_KEY);
+      if (data) return data;
+    } else {
+      // Fallback to in-memory cache for local dev
+      if (localDataCache) return localDataCache;
+    }
   } catch (err) {
-    console.warn('⚠️  Warning: Could not write customers to file. Using in-memory storage.', err.message);
-    console.warn('   This is normal on Vercel. For persistent storage, use Vercel KV or a database.');
-    // Still return true since data is cached in memory
-    return true;
+    console.warn('Error loading from KV:', err.message);
+  }
+  
+  // Return default structure
+  return { customers: [], recoveryTokens: [] };
+}
+
+async function save(data) {
+  try {
+    if (usingKV) {
+      // Save to Vercel KV (no expiration, persistent)
+      await kv.set(CUSTOMERS_KEY, data);
+      return true;
+    } else {
+      // Fallback to in-memory cache
+      localDataCache = data;
+      return true;
+    }
+  } catch (err) {
+    console.error('Error saving to KV:', err.message);
+    localDataCache = data;
+    return false;
   }
 }
 
@@ -58,28 +65,29 @@ function generateToken() {
   return 'cust_' + crypto.randomBytes(12).toString('hex');
 }
 
-function getAllCustomers() {
-  return load().customers;
+async function getAllCustomers() {
+  const d = await load();
+  return d.customers || [];
 }
 
-function getCustomerById(id) {
-  const d = load();
-  return d.customers.find(c => c.id === id) || null;
+async function getCustomerById(id) {
+  const d = await load();
+  return (d.customers || []).find(c => c.id === id) || null;
 }
 
-function getCustomerByEmail(email) {
-  const d = load();
-  return d.customers.find(c => c.email === email) || null;
+async function getCustomerByEmail(email) {
+  const d = await load();
+  return (d.customers || []).find(c => c.email === email) || null;
 }
 
-function getCustomerByToken(token) {
-  const d = load();
-  return d.customers.find(c => c.token === token) || null;
+async function getCustomerByToken(token) {
+  const d = await load();
+  return (d.customers || []).find(c => c.token === token) || null;
 }
 
-function createCustomer({ email }) {
-  const d = load();
-  if (d.customers.find(c => c.email === email)) {
+async function createCustomer({ email }) {
+  const d = await load();
+  if ((d.customers || []).find(c => c.email === email)) {
     throw new Error('Email already exists');
   }
   const customer = {
@@ -90,33 +98,34 @@ function createCustomer({ email }) {
     createdAt: new Date().toISOString(),
     lastLogin: null,
   };
+  d.customers = d.customers || [];
   d.customers.push(customer);
-  save(d);
+  await save(d);
   return customer;
 }
 
-function deleteCustomer(id) {
-  const d = load();
-  const filtered = d.customers.filter(c => c.id !== id);
-  if (filtered.length === d.customers.length) return false;
+async function deleteCustomer(id) {
+  const d = await load();
+  const filtered = (d.customers || []).filter(c => c.id !== id);
+  if (filtered.length === (d.customers || []).length) return false;
   d.customers = filtered;
-  save(d);
+  await save(d);
   return true;
 }
 
-function regenerateToken(id) {
-  const d = load();
-  const idx = d.customers.findIndex(c => c.id === id);
+async function regenerateToken(id) {
+  const d = await load();
+  const idx = (d.customers || []).findIndex(c => c.id === id);
   if (idx === -1) return null;
   d.customers[idx].token = generateToken();
   d.customers[idx].updatedAt = new Date().toISOString();
-  save(d);
+  await save(d);
   return d.customers[idx];
 }
 
 // Recovery token lifecycle
-function createRecoveryToken(email, expiresInMinutes = 60) {
-  const d = load();
+async function createRecoveryToken(email, expiresInMinutes = 60) {
+  const d = await load();
   const token = 'recover_' + crypto.randomBytes(12).toString('hex');
   const record = {
     recoveryToken: token,
@@ -126,18 +135,18 @@ function createRecoveryToken(email, expiresInMinutes = 60) {
   };
   d.recoveryTokens = d.recoveryTokens || [];
   d.recoveryTokens.push(record);
-  save(d);
+  await save(d);
   return record;
 }
 
-function getRecoveryToken(token) {
-  const d = load();
+async function getRecoveryToken(token) {
+  const d = await load();
   d.recoveryTokens = d.recoveryTokens || [];
   return d.recoveryTokens.find(r => r.recoveryToken === token) || null;
 }
 
-function consumeRecoveryToken(token) {
-  const d = load();
+async function consumeRecoveryToken(token) {
+  const d = await load();
   d.recoveryTokens = d.recoveryTokens || [];
   const idx = d.recoveryTokens.findIndex(r => r.recoveryToken === token);
   if (idx === -1) return null;
@@ -145,7 +154,7 @@ function consumeRecoveryToken(token) {
   if (rec.used) return null;
   if (new Date(rec.expiresAt) < new Date()) return null;
   d.recoveryTokens[idx].used = true;
-  save(d);
+  await save(d);
   return rec;
 }
 

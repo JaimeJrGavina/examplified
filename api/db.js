@@ -1,10 +1,10 @@
-// Simple file-based persistent storage for exams
-// In production: replace with a real database (MongoDB, PostgreSQL, etc.)
-// Note: On Vercel, uses in-memory cache due to ephemeral filesystem
+// Exam storage using Vercel KV (with fallback to file-based for local dev)
+// In production: uses Vercel KV for persistent storage
 
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { kv } from '@vercel/kv';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, 'data');
@@ -15,62 +15,86 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// In-memory cache for Vercel's ephemeral filesystem
-let examsCache = null;
-let cacheitialized = false;
+// KV key for exams storage
+const EXAMS_KEY = 'examplified:exams';
 
-function loadExams() {
+// In-memory fallback for local development
+let localExamsCache = null;
+let usingKV = false;
+
+async function initKV() {
   try {
-    // Try to load from file first (for local dev and initial deploy)
-    if (fs.existsSync(EXAMS_FILE)) {
-      const data = fs.readFileSync(EXAMS_FILE, 'utf8');
-      examsCache = JSON.parse(data);
-      cacheitialized = true;
-      return examsCache;
+    // Test KV connection
+    await kv.set('_test_connection', '1', { ex: 1 });
+    usingKV = true;
+    console.log('✓ Vercel KV connected for exams');
+    return true;
+  } catch (err) {
+    console.log('ℹ️  Vercel KV not available for exams, using file-based storage (local development)');
+    usingKV = false;
+    return false;
+  }
+}
+
+// Initialize KV on module load
+initKV();
+
+async function loadExams() {
+  try {
+    if (usingKV) {
+      const data = await kv.get(EXAMS_KEY);
+      if (data) return data;
+    } else {
+      // Try to load from file for local dev
+      if (fs.existsSync(EXAMS_FILE)) {
+        const data = fs.readFileSync(EXAMS_FILE, 'utf8');
+        localExamsCache = JSON.parse(data);
+        return localExamsCache;
+      }
+      if (localExamsCache) return localExamsCache;
     }
   } catch (err) {
-    console.warn('Error loading exams from file:', err.message);
+    console.warn('Error loading exams:', err.message);
   }
   
-  // If cache is already initialized, return it (for Vercel's ephemeral fs)
-  if (cacheitialized && examsCache) {
-    return examsCache;
-  }
-  
-  // Initialize default cache
-  examsCache = [];
-  cacheitialized = true;
-  return examsCache;
+  // Return default cache
+  return [];
 }
 
-function saveExams(exams) {
-  // Update in-memory cache first (critical for Vercel)
-  examsCache = exams;
-  cacheitialized = true;
-  
+async function saveExams(exams) {
   try {
-    // Try to persist to file (works on local, may fail on Vercel)
-    fs.writeFileSync(EXAMS_FILE, JSON.stringify(exams, null, 2), 'utf8');
-    return true;
+    if (usingKV) {
+      // Save to Vercel KV (no expiration, persistent)
+      await kv.set(EXAMS_KEY, exams);
+      return true;
+    } else {
+      // Fallback to file-based storage
+      localExamsCache = exams;
+      try {
+        fs.writeFileSync(EXAMS_FILE, JSON.stringify(exams, null, 2), 'utf8');
+      } catch (err) {
+        console.warn('Could not write exams to file:', err.message);
+      }
+      return true;
+    }
   } catch (err) {
-    console.warn('⚠️  Warning: Could not write exams to file. Using in-memory storage.', err.message);
-    console.warn('   This is normal on Vercel. For persistent storage, use Vercel KV or a database.');
-    // Still return true since data is cached in memory
-    return true;
+    console.error('Error saving exams:', err.message);
+    localExamsCache = exams;
+    return false;
   }
 }
 
-function getAllExams() {
-  return loadExams();
+async function getAllExams() {
+  return await loadExams();
 }
 
-function getExamById(id) {
-  const exams = loadExams();
+async function getExamById(id) {
+  const exams = await loadExams();
   return exams.find(e => e.id === id) || null;
 }
 
-function createExam(exam) {
-  const exams = loadExams();
+async function createExam(exam) {
+  const exams = await loadExams();
   const newExam = {
     ...exam,
     id: exam.id || `exam-${Date.now()}`,
@@ -78,12 +102,12 @@ function createExam(exam) {
     updatedAt: new Date().toISOString(),
   };
   exams.push(newExam);
-  saveExams(exams);
+  await saveExams(exams);
   return newExam;
 }
 
-function updateExam(id, updates) {
-  const exams = loadExams();
+async function updateExam(id, updates) {
+  const exams = await loadExams();
   const index = exams.findIndex(e => e.id === id);
   if (index === -1) return null;
   
@@ -93,15 +117,15 @@ function updateExam(id, updates) {
     id, // don't allow id change
     updatedAt: new Date().toISOString(),
   };
-  saveExams(exams);
+  await saveExams(exams);
   return exams[index];
 }
 
-function deleteExam(id) {
-  const exams = loadExams();
+async function deleteExam(id) {
+  const exams = await loadExams();
   const filtered = exams.filter(e => e.id !== id);
   if (filtered.length === exams.length) return false; // not found
-  saveExams(filtered);
+  await saveExams(filtered);
   return true;
 }
 

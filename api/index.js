@@ -49,8 +49,8 @@ app.get('/admin', adminAuth, (req, res) => {
 });
 
 // Protected: Get all exams
-app.get('/admin/exams', adminAuth, (req, res) => {
-  const exams = db.getAllExams();
+app.get('/admin/exams', adminAuth, async (req, res) => {
+  const exams = await db.getAllExams();
   res.json({
     ok: true,
     count: exams.length,
@@ -59,8 +59,8 @@ app.get('/admin/exams', adminAuth, (req, res) => {
 });
 
 // Protected: Get single exam by ID
-app.get('/admin/exams/:id', adminAuth, (req, res) => {
-  const exam = db.getExamById(req.params.id);
+app.get('/admin/exams/:id', adminAuth, async (req, res) => {
+  const exam = await db.getExamById(req.params.id);
   if (!exam) {
     return res.status(404).json({ error: 'Exam not found' });
   }
@@ -68,7 +68,7 @@ app.get('/admin/exams/:id', adminAuth, (req, res) => {
 });
 
 // Protected: Create new exam (save from dashboard)
-app.post('/admin/exams', adminAuth, (req, res) => {
+app.post('/admin/exams', adminAuth, async (req, res) => {
   const { title, subject, description, durationMinutes, questions } = req.body || {};
   if (!title) {
     return res.status(400).json({ error: 'title required' });
@@ -76,7 +76,7 @@ app.post('/admin/exams', adminAuth, (req, res) => {
 
   try {
     console.log('[admin] createExam request by', req.admin?.clientId, 'body:', { title, subject });
-    const exam = db.createExam({
+    const exam = await db.createExam({
       title,
       subject: subject || 'General',
       description: description || '',
@@ -93,9 +93,9 @@ app.post('/admin/exams', adminAuth, (req, res) => {
 });
 
 // Protected: Update exam
-app.put('/admin/exams/:id', adminAuth, (req, res) => {
+app.put('/admin/exams/:id', adminAuth, async (req, res) => {
   try {
-    const updated = db.updateExam(req.params.id, req.body);
+    const updated = await db.updateExam(req.params.id, req.body);
     if (!updated) return res.status(404).json({ error: 'Exam not found' });
     console.log('[admin] exam updated:', req.params.id);
     res.json({ ok: true, exam: updated });
@@ -106,10 +106,10 @@ app.put('/admin/exams/:id', adminAuth, (req, res) => {
 });
 
 // Protected: Delete exam
-app.delete('/admin/exams/:id', adminAuth, (req, res) => {
+app.delete('/admin/exams/:id', adminAuth, async (req, res) => {
   try {
     console.log('[admin] deleteExam request by', req.admin?.clientId, 'id:', req.params.id);
-    const deleted = db.deleteExam(req.params.id);
+    const deleted = await db.deleteExam(req.params.id);
     if (!deleted) {
       console.log('[admin] deleteExam not found:', req.params.id);
       return res.status(404).json({ error: 'Exam not found' });
@@ -155,11 +155,11 @@ app.post('/admin/codes', adminAuth, (req, res) => {
 });
 
 // Protected: Manage customers (admin)
-app.post('/admin/customers', adminAuth, (req, res) => {
+app.post('/admin/customers', adminAuth, async (req, res) => {
   const { email } = req.body || {};
   if (!email) return res.status(400).json({ error: 'email required' });
   try {
-    const customer = customers.createCustomer({ email });
+    const customer = await customers.createCustomer({ email });
     // send welcome email with token
     try { mailer.sendWelcome(customer.email, customer.token); } catch (e) { /* ignore mail errors */ }
     res.status(201).json({ ok: true, customer });
@@ -168,30 +168,30 @@ app.post('/admin/customers', adminAuth, (req, res) => {
   }
 });
 
-app.get('/admin/customers', adminAuth, (req, res) => {
-  const all = customers.getAllCustomers();
+app.get('/admin/customers', adminAuth, async (req, res) => {
+  const all = await customers.getAllCustomers();
   res.json({ ok: true, count: all.length, customers: all });
 });
 
-app.delete('/admin/customers/:id', adminAuth, (req, res) => {
-  const deleted = customers.deleteCustomer(req.params.id);
+app.delete('/admin/customers/:id', adminAuth, async (req, res) => {
+  const deleted = await customers.deleteCustomer(req.params.id);
   if (!deleted) return res.status(404).json({ error: 'Customer not found' });
   res.json({ ok: true, message: 'Customer deleted' });
 });
 
-app.post('/admin/customers/:id/regenerate-token', adminAuth, (req, res) => {
-  const updated = customers.regenerateToken(req.params.id);
+app.post('/admin/customers/:id/regenerate-token', adminAuth, async (req, res) => {
+  const updated = await customers.regenerateToken(req.params.id);
   if (!updated) return res.status(404).json({ error: 'Customer not found' });
   try { mailer.sendWelcome(updated.email, updated.token); } catch (e) {}
   res.json({ ok: true, customer: updated });
 });
 
 // Public: customer login using token
-app.post('/customer-login', (req, res) => {
+app.post('/customer-login', async (req, res) => {
   const { token: rawToken } = req.body || {};
   const token = rawToken?.trim();
   if (!token) return res.status(400).json({ error: 'token required' });
-  const cust = customers.getCustomerByToken(token);
+  const cust = await customers.getCustomerByToken(token);
   if (!cust) return res.status(404).json({ error: 'Invalid token' });
   // update last login
   try { customers.regenerateToken; } catch (e) {}
@@ -199,32 +199,32 @@ app.post('/customer-login', (req, res) => {
 });
 
 // Public: request recovery
-app.post('/customer-recover', (req, res) => {
+app.post('/customer-recover', async (req, res) => {
   const { email } = req.body || {};
   if (!email) return res.status(400).json({ error: 'email required' });
-  const cust = customers.getCustomerByEmail(email);
+  const cust = await customers.getCustomerByEmail(email);
   if (!cust) return res.status(404).json({ error: 'Email not found' });
-  const rec = customers.createRecoveryToken(email, 60);
+  const rec = await customers.createRecoveryToken(email, 60);
   const link = `http://localhost:3001/#/recover/${rec.recoveryToken}`;
   try { mailer.sendRecovery(email, link); } catch (e) {}
   res.json({ ok: true, message: 'Recovery email sent' });
 });
 
 // Public: verify recovery token
-app.get('/customer-recover/:token', (req, res) => {
-  const rec = customers.getRecoveryToken(req.params.token);
+app.get('/customer-recover/:token', async (req, res) => {
+  const rec = await customers.getRecoveryToken(req.params.token);
   if (!rec) return res.status(404).json({ error: 'Invalid or expired token' });
   if (new Date(rec.expiresAt) < new Date() || rec.used) return res.status(410).json({ error: 'Token expired or used' });
   res.json({ ok: true, email: rec.email });
 });
 
 // Public: consume recovery token and generate new customer token
-app.post('/customer-recover/:token/reset', (req, res) => {
-  const rec = customers.consumeRecoveryToken(req.params.token);
+app.post('/customer-recover/:token/reset', async (req, res) => {
+  const rec = await customers.consumeRecoveryToken(req.params.token);
   if (!rec) return res.status(404).json({ error: 'Invalid or expired token' });
-  const cust = customers.getCustomerByEmail(rec.email);
+  const cust = await customers.getCustomerByEmail(rec.email);
   if (!cust) return res.status(404).json({ error: 'Customer not found' });
-  const updated = customers.regenerateToken(cust.id);
+  const updated = await customers.regenerateToken(cust.id);
   try { mailer.sendWelcome(updated.email, updated.token); } catch (e) {}
   res.json({ ok: true, token: updated.token });
 });
@@ -243,8 +243,8 @@ app.post('/customer-access', (req, res) => {
 });
 
 // Public: Get all exams (for frontend dashboard - no auth)
-app.get('/exams', (req, res) => {
-  const exams = db.getAllExams();
+app.get('/exams', async (req, res) => {
+  const exams = await db.getAllExams();
   res.json({
     ok: true,
     exams,
@@ -252,8 +252,8 @@ app.get('/exams', (req, res) => {
 });
 
 // Public: Get single exam (for taking exam - no auth)
-app.get('/exams/:id', (req, res) => {
-  const exam = db.getExamById(req.params.id);
+app.get('/exams/:id', async (req, res) => {
+  const exam = await db.getExamById(req.params.id);
   if (!exam) {
     return res.status(404).json({ error: 'Exam not found' });
   }
