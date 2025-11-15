@@ -8,6 +8,14 @@ export default defineConfig(({ mode }) => {
     
     return {
       base: '/',
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks: undefined,
+          }
+        },
+        cssCodeSplit: false,
+      },
       server: {
         port: 3000,
         host: '0.0.0.0',
