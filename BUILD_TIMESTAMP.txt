@@ -1,0 +1,3 @@
+Last build: 2025-11-15T20:10:00Z
+Build ID: email-password-auth-v1
+Status: Email/password login - no tokens for students
