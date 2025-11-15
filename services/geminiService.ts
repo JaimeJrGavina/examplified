@@ -1,11 +1,17 @@
-
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { Question, QuestionType } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.API_KEY || process.env.GEMINI_API_KEY;
+
+// Create AI instance only if API key exists
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 export const generateExamQuestions = async (subject: string, count: number = 3): Promise<Question[]> => {
+  if (!ai) {
+    console.warn('Gemini API key not configured. Using mock questions instead.');
+    return generateMockQuestions(subject, count);
+  }
+
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
@@ -121,4 +127,92 @@ export const gradeEssayAnswer = async (questionText: string, userAnswer: string,
             feedback: "Could not generate feedback at this time. The AI service may be unavailable or the answer format was invalid."
         };
     }
+};
+
+// Mock BART questions when Gemini API is unavailable
+const generateMockQuestions = (subject: string, count: number): Question[] => {
+    const mockQuestionsMap: Record<string, Question[]> = {
+        "Reading Comprehension": [
+            {
+                id: "mock-1",
+                text: "Read the passage carefully and answer the following question:\n\nScience has demonstrated that the human brain remains remarkably plastic throughout life. Recent studies show that neuroplasticity—the brain's ability to reorganize itself by forming new neural connections—persists well into old age. This challenges the previously held belief that neural development ceased after childhood.",
+                type: "short_answer",
+                subject: "Reading Comprehension",
+                correctAnswer: "The brain can reorganize itself and form new neural connections throughout life.",
+                points: 5
+            },
+            {
+                id: "mock-2",
+                text: "What does the term 'neuroplasticity' mean in the context of the passage?",
+                type: "short_answer",
+                subject: "Reading Comprehension",
+                correctAnswer: "Neuroplasticity is the brain's ability to reorganize itself by forming new neural connections.",
+                points: 5
+            },
+            {
+                id: "mock-3",
+                text: "According to the passage, what previous belief about neural development is being challenged?",
+                type: "short_answer",
+                subject: "Reading Comprehension",
+                correctAnswer: "The belief that neural development ceased after childhood.",
+                points: 5
+            }
+        ],
+        "Writing Skills": [
+            {
+                id: "mock-4",
+                text: "Write a paragraph explaining why education is important in modern society.",
+                type: "short_answer",
+                subject: "Writing Skills",
+                correctAnswer: "Education provides essential knowledge and critical thinking skills needed to navigate an increasingly complex world.",
+                points: 5
+            },
+            {
+                id: "mock-5",
+                text: "Compose a thesis statement for an essay about climate change.",
+                type: "short_answer",
+                subject: "Writing Skills",
+                correctAnswer: "Climate change represents one of the most significant challenges of our time, requiring immediate global action across multiple sectors.",
+                points: 5
+            },
+            {
+                id: "mock-6",
+                text: "Explain the importance of clear communication in professional settings.",
+                type: "short_answer",
+                subject: "Writing Skills",
+                correctAnswer: "Clear communication ensures that information is accurately conveyed, preventing misunderstandings and enabling effective collaboration.",
+                points: 5
+            }
+        ],
+        "Mathematics": [
+            {
+                id: "mock-7",
+                text: "Solve: If a store offers a 20% discount on an item originally priced at $50, what is the final price?",
+                type: "short_answer",
+                subject: "Mathematics",
+                correctAnswer: "$40 or 40 dollars",
+                points: 5
+            },
+            {
+                id: "mock-8",
+                text: "Calculate: What is 15% of 200?",
+                type: "short_answer",
+                subject: "Mathematics",
+                correctAnswer: "30",
+                points: 5
+            },
+            {
+                id: "mock-9",
+                text: "If a rectangle has a length of 12 cm and a width of 8 cm, what is its area?",
+                type: "short_answer",
+                subject: "Mathematics",
+                correctAnswer: "96 square centimeters or 96 cm²",
+                points: 5
+            }
+        ]
+    };
+
+    // Return questions for the specified subject or default questions
+    const questions = mockQuestionsMap[subject] || mockQuestionsMap["Reading Comprehension"] || [];
+    return questions.slice(0, count);
 };
