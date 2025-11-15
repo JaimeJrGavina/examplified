@@ -1,0 +1,6 @@
+// Vercel serverless function handler for API routes
+// This file handles all /api/* routes
+
+import app from '../api/index.js';
+
+export default app;
