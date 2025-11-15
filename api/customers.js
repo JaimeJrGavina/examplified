@@ -1,12 +1,13 @@
 import crypto from 'crypto';
 
-// Try to import Vercel KV, with fallback for local development
+// Try to import Vercel KV
 let kv = null;
 try {
-  const kvModule = await import('@vercel/kv');
-  kv = kvModule.kv;
+  // Direct import - will work on Vercel, fail locally without @vercel/kv installed
+  const { kv: kvClient } = await import('@vercel/kv');
+  kv = kvClient;
 } catch (err) {
-  console.log('ℹ️  Vercel KV module not available');
+  console.log('ℹ️  Vercel KV not available (this is OK for local dev)');
 }
 
 // Keys used in Vercel KV

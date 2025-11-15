@@ -159,11 +159,14 @@ app.post('/admin/customers', adminAuth, async (req, res) => {
   const { email } = req.body || {};
   if (!email) return res.status(400).json({ error: 'email required' });
   try {
+    console.log('[admin] Creating customer for email:', email);
     const customer = await customers.createCustomer({ email });
+    console.log('[admin] Customer created successfully:', customer.id);
     // send welcome email with token
     try { mailer.sendWelcome(customer.email, customer.token); } catch (e) { /* ignore mail errors */ }
     res.status(201).json({ ok: true, customer });
   } catch (err) {
+    console.error('[admin] Error creating customer:', err.message, err.stack);
     res.status(400).json({ error: err.message });
   }
 });
