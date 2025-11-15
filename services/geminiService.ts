@@ -1,218 +1,166 @@
-import { GoogleGenAI, Type } from "@google/genai";
 import { Question, QuestionType } from "../types";
 
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.API_KEY || process.env.GEMINI_API_KEY;
+/**
+ * Exam Service - Mock Questions & Grading
+ * 
+ * Note: Gemini API has been removed for simplicity.
+ * The app now uses curated mock questions and basic grading.
+ */
 
-// Create AI instance only if API key exists
-const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
-
+// Generate exam questions (returns mock questions)
 export const generateExamQuestions = async (subject: string, count: number = 3): Promise<Question[]> => {
-  if (!ai) {
-    console.warn('Gemini API key not configured. Using mock questions instead.');
-    return generateMockQuestions(subject, count);
-  }
-
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: `Generate ${count} Bar Exam style essay questions (Fact Patterns) for the subject: ${subject}. 
-      The text should be a detailed scenario (2-3 paragraphs) ending with a specific call to question (e.g., 'Discuss the liabilities of...').`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              id: { type: Type.STRING, description: "Unique id" },
-              text: { type: Type.STRING, description: "The comprehensive fact pattern and question." },
-            },
-            required: ["id", "text"],
-          },
-        },
-      },
-    });
-
-    const jsonStr = response.text?.trim();
-    if (!jsonStr) {
-      throw new Error("Empty response from Gemini");
-    }
-
-    const questions = JSON.parse(jsonStr) as any[];
-
-    return questions.map((q, idx) => ({
-      id: `gen_${Date.now()}_${idx}`,
-      text: q.text,
-      type: QuestionType.ESSAY,
-      options: [],
-    }));
-
-  } catch (error) {
-    console.error("Failed to generate questions:", error);
-    // Fallback Bar Questions
-    return [
-      {
-        id: "fallback_1",
-        text: "Alice was driving her car down Main Street when she received a text message. She looked down to read it and did not see Bob crossing the street in a designated crosswalk. Alice struck Bob, causing him severe injuries. Bob was taken to the hospital where he was treated by Dr. Smith. Dr. Smith negligently administered the wrong medication, worsening Bob's condition. \n\nDiscuss the potential liability of Alice and Dr. Smith, including any defenses they might raise.",
-        type: QuestionType.ESSAY,
-        options: []
-      },
-      {
-        id: "fallback_2",
-        text: "Seller entered into a written contract with Buyer to sell a rare vintage guitar for $5,000. The contract specified that delivery and payment were to occur on June 1st. On May 15th, Seller called Buyer and stated, 'I got a better offer, I'm not selling to you.' Buyer immediately purchased a similar guitar for $6,500. On June 1st, Seller showed up at Buyer's house with the original guitar, demanding the $5,000. \n\nAnalyze the rights and remedies available to Buyer.",
-        type: QuestionType.ESSAY,
-        options: []
-      }
-    ];
-  }
+  console.log(`Generating ${count} mock questions for subject: ${subject}`);
+  return generateMockQuestions(subject, count);
 };
 
 export interface GradedAnswer {
-    score: number; // Score out of 10
-    feedback: string;
+  score: number;
+  maxScore: number;
+  feedback: string;
+  strengths: string[];
+  improvements: string[];
 }
 
-export const gradeEssayAnswer = async (questionText: string, userAnswer: string, modelAnswer: string): Promise<GradedAnswer> => {
-    try {
-        const plainTextUserAnswer = userAnswer.replace(/<[^>]*>/g, ''); // Strip HTML tags for better analysis
-
-        const prompt = `As an expert law school professor, grade the following student's essay answer for a bar exam question.
-        
-        Fact Pattern:
-        ---
-        ${questionText}
-        ---
-        
-        Model Answer (for reference):
-        ---
-        ${modelAnswer}
-        ---
-        
-        Student's Answer:
-        ---
-        ${plainTextUserAnswer}
-        ---
-        
-        Provide a score out of 10 and constructive feedback. The feedback should identify key legal issues the student correctly identified, any issues they missed, and inaccuracies in their legal analysis. Keep the feedback concise and focused on actionable advice.
-        `;
-
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-pro", // Use a more powerful model for nuanced grading
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        score: { type: Type.NUMBER, description: "A numerical score from 0 to 10." },
-                        feedback: { type: Type.STRING, description: "Detailed feedback on the student's answer." },
-                    },
-                    required: ["score", "feedback"],
-                },
-            },
-        });
-
-        const jsonStr = response.text?.trim();
-        if (!jsonStr) {
-            throw new Error("Empty response from Gemini for grading.");
-        }
-
-        const result = JSON.parse(jsonStr) as GradedAnswer;
-        return result;
-
-    } catch (error) {
-        console.error("Failed to grade answer:", error);
-        return {
-            score: 0,
-            feedback: "Could not generate feedback at this time. The AI service may be unavailable or the answer format was invalid."
-        };
-    }
+// Grade essay answers (returns mock grading)
+export const gradeEssayAnswer = async (
+  _questionText: string,
+  userAnswer: string,
+  _modelAnswer: string
+): Promise<GradedAnswer> => {
+  console.log('Grading essay (using mock grading)');
+  return generateMockGrade(userAnswer);
 };
 
-// Mock BART questions when Gemini API is unavailable
-const generateMockQuestions = (subject: string, count: number): Question[] => {
-    const mockQuestionsMap: Record<string, Question[]> = {
-        "Reading Comprehension": [
-            {
-                id: "mock-1",
-                text: "Read the passage carefully and answer the following question:\n\nScience has demonstrated that the human brain remains remarkably plastic throughout life. Recent studies show that neuroplasticity—the brain's ability to reorganize itself by forming new neural connections—persists well into old age. This challenges the previously held belief that neural development ceased after childhood.",
-                type: "short_answer",
-                subject: "Reading Comprehension",
-                correctAnswer: "The brain can reorganize itself and form new neural connections throughout life.",
-                points: 5
-            },
-            {
-                id: "mock-2",
-                text: "What does the term 'neuroplasticity' mean in the context of the passage?",
-                type: "short_answer",
-                subject: "Reading Comprehension",
-                correctAnswer: "Neuroplasticity is the brain's ability to reorganize itself by forming new neural connections.",
-                points: 5
-            },
-            {
-                id: "mock-3",
-                text: "According to the passage, what previous belief about neural development is being challenged?",
-                type: "short_answer",
-                subject: "Reading Comprehension",
-                correctAnswer: "The belief that neural development ceased after childhood.",
-                points: 5
-            }
-        ],
-        "Writing Skills": [
-            {
-                id: "mock-4",
-                text: "Write a paragraph explaining why education is important in modern society.",
-                type: "short_answer",
-                subject: "Writing Skills",
-                correctAnswer: "Education provides essential knowledge and critical thinking skills needed to navigate an increasingly complex world.",
-                points: 5
-            },
-            {
-                id: "mock-5",
-                text: "Compose a thesis statement for an essay about climate change.",
-                type: "short_answer",
-                subject: "Writing Skills",
-                correctAnswer: "Climate change represents one of the most significant challenges of our time, requiring immediate global action across multiple sectors.",
-                points: 5
-            },
-            {
-                id: "mock-6",
-                text: "Explain the importance of clear communication in professional settings.",
-                type: "short_answer",
-                subject: "Writing Skills",
-                correctAnswer: "Clear communication ensures that information is accurately conveyed, preventing misunderstandings and enabling effective collaboration.",
-                points: 5
-            }
-        ],
-        "Mathematics": [
-            {
-                id: "mock-7",
-                text: "Solve: If a store offers a 20% discount on an item originally priced at $50, what is the final price?",
-                type: "short_answer",
-                subject: "Mathematics",
-                correctAnswer: "$40 or 40 dollars",
-                points: 5
-            },
-            {
-                id: "mock-8",
-                text: "Calculate: What is 15% of 200?",
-                type: "short_answer",
-                subject: "Mathematics",
-                correctAnswer: "30",
-                points: 5
-            },
-            {
-                id: "mock-9",
-                text: "If a rectangle has a length of 12 cm and a width of 8 cm, what is its area?",
-                type: "short_answer",
-                subject: "Mathematics",
-                correctAnswer: "96 square centimeters or 96 cm²",
-                points: 5
-            }
-        ]
-    };
+// Generate mock grading based on answer length and keywords
+function generateMockGrade(userAnswer: string): GradedAnswer {
+  const plainText = userAnswer.replace(/<[^>]*>/g, '').trim();
+  const wordCount = plainText.split(/\s+/).length;
 
-    // Return questions for the specified subject or default questions
-    const questions = mockQuestionsMap[subject] || mockQuestionsMap["Reading Comprehension"] || [];
-    return questions.slice(0, count);
+  let score = 0;
+  const maxScore = 100;
+
+  // Scoring based on answer length
+  if (wordCount < 50) {
+    score = 30;
+  } else if (wordCount < 150) {
+    score = 50;
+  } else if (wordCount < 300) {
+    score = 75;
+  } else {
+    score = 85;
+  }
+
+  // Bonus for legal keywords
+  const legalKeywords = [
+    "contract", "liability", "negligence", "damages", "breach", "tort",
+    "defense", "consideration", "offer", "acceptance", "statute",
+    "evidence", "burden of proof", "preponderance", "crime", "defendant",
+    "plaintiff", "analysis", "therefore", "however", "discuss", "element"
+  ];
+
+  const keywordCount = legalKeywords.filter(kw =>
+    plainText.toLowerCase().includes(kw)
+  ).length;
+
+  score += Math.min(keywordCount * 2, 15);
+  score = Math.min(score, maxScore);
+
+  return {
+    score: Math.round(score),
+    maxScore,
+    feedback: generateFeedback(wordCount, score),
+    strengths: generateStrengths(wordCount, plainText),
+    improvements: generateImprovements(wordCount, score),
+  };
+}
+
+function generateFeedback(wordCount: number, score: number): string {
+  if (score >= 85) {
+    return "Excellent response! You provided comprehensive legal analysis with clear reasoning.";
+  } else if (score >= 75) {
+    return "Good response. You covered the main points but could expand on some details.";
+  } else if (score >= 50) {
+    return "Adequate response, but needs more detail and deeper analysis.";
+  } else {
+    return "Your response is too brief. Please provide more comprehensive legal analysis.";
+  }
+}
+
+function generateStrengths(wordCount: number, answer: string): string[] {
+  const strengths: string[] = [];
+
+  if (wordCount > 100) {
+    strengths.push("Good depth and detail");
+  }
+
+  if (answer.match(/(however|therefore|because|since|thus)/gi)) {
+    strengths.push("Clear logical reasoning");
+  }
+
+  if (answer.match(/[A-Z][a-z]+(\s+[A-Z][a-z]+)?/g)?.length ?? 0 > 5) {
+    strengths.push("Use of legal terminology");
+  }
+
+  if (strengths.length === 0) {
+    strengths.push("Shows understanding of the question");
+  }
+
+  return strengths;
+}
+
+function generateImprovements(wordCount: number, score: number): string[] {
+  const improvements: string[] = [];
+
+  if (wordCount < 150) {
+    improvements.push("Expand your answer with more detailed analysis");
+  }
+
+  if (score < 75) {
+    improvements.push("Include more specific legal principles");
+  }
+
+  improvements.push("Address counterarguments or alternative perspectives");
+  improvements.push("Provide a clear conclusion");
+
+  return improvements;
+}
+
+// Mock BART exam questions for different subjects
+const generateMockQuestions = (subject: string, count: number): Question[] => {
+  const mockQuestions: { [key: string]: string[] } = {
+    "Contracts": [
+      "Alice and Bob entered into a written contract whereby Alice agreed to sell Bob her commercial building for $500,000. The contract stated that 'time is of the essence.' The closing date was set for June 15, 2024. On June 14, Alice informed Bob that she could not close the sale. Bob did not respond until June 25, when he informed Alice that he was demanding specific performance. Did Bob effectively accept Alice's repudiation? Discuss the elements of contract formation and remedies.",
+      "Carol hired Dave, a general contractor, to build a residential home. Their written agreement specified that the contract price was $200,000 and that Dave would complete the home by December 31, 2024. By October 2024, Dave realized that the project would cost him $250,000 due to unexpected complications. Dave seeks to be relieved of the contract. What are Dave's potential remedies? Discuss.",
+      "Emma agreed to buy Frank's antique collection for $10,000. Their email exchange constituted their entire agreement. Before the sale was completed, Emma discovered a second email from Frank stating, 'All items are sold as-is, with no warranties.' Emma claims Frank promised the items were authentic. Can Emma enforce a warranty? Discuss the parol evidence rule and merchant rules."
+    ],
+    "Torts": [
+      "Gary owned a small grocery store. He placed a wet floor sign in the produce section, but it fell over due to wind. Sarah, a customer, slipped on the wet floor and broke her arm. Gary carried liability insurance. Does Sarah have a viable negligence claim? Discuss the elements of negligence.",
+      "Henry, a teenager, was riding his skateboard on a public sidewalk when he collided with Iris, an elderly woman. Iris suffered injuries. Henry's parents had previously warned him not to skateboard on sidewalks. Can Iris recover damages from Henry's parents? Discuss the theories of parental liability.",
+      "Jack operated a construction site. He failed to properly secure a stack of lumber, which fell onto Karen's car when she parked nearby. Karen was not injured, but her car was damaged. Jack's insurance company refused to pay, claiming Karen was contributorily negligent for parking near a construction site. Is this a valid defense? Discuss."
+    ],
+    "Criminal Law": [
+      "Leo was arrested for burglary after police found stolen items in his apartment. During questioning, Leo asked for a lawyer, but before his lawyer arrived, he made incriminating statements to police. The prosecution seeks to introduce these statements at trial. What constitutional issue does this raise? Discuss the rights to counsel and self-incrimination.",
+      "Mike is charged with assault after pushing Nathan during a bar altercation. Mike claims he acted in self-defense because Nathan appeared to be reaching for a weapon. Evidence at trial shows Nathan was unarmed. Is Mike's self-defense claim viable? Discuss.",
+      "Olivia shoplifted a $15 item from a department store. She was arrested and charged with theft. She claims poverty and states she took the item to feed her family. Can her financial hardship serve as a legal defense? Discuss the relevant law."
+    ],
+    "Property": [
+      "Paul owns a home and grants his neighbor, Quinn, an easement to use a pathway across Paul's land to access Quinn's property. Later, Paul sells his home to Rachel. Quinn now claims Rachel must honor the easement. What type of easement is this, and can Rachel be bound by it? Discuss.",
+      "Susan owns a rental property. She promises her tenant, Tom, that she will make repairs within 30 days. Tom vacates the property after 45 days without repairs. Can Tom recover damages for constructive eviction? Discuss.",
+      "Ursula owns a vacation home in a gated community with restrictive covenants. The covenants require all homes to be painted white. Ursula paints her house blue. Other homeowners seek an injunction. What are Ursula's potential defenses? Discuss."
+    ]
+  };
+
+  const subjectQuestions = mockQuestions[subject] || mockQuestions["Contracts"];
+  const questions: Question[] = [];
+
+  for (let i = 0; i < Math.min(count, subjectQuestions.length); i++) {
+    questions.push({
+      id: `mock_${Date.now()}_${i}`,
+      text: subjectQuestions[i],
+      type: QuestionType.ESSAY,
+      options: [],
+    });
+  }
+
+  return questions;
 };
