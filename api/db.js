@@ -14,53 +14,34 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// Try to import Vercel KV
+// Load Vercel KV if available (production on Vercel)
+// Falls back to file-based storage otherwise
 let kv = null;
-try {
-  // Direct import - will work on Vercel, fail locally without @vercel/kv installed
-  const { kv: kvClient } = await import('@vercel/kv');
-  kv = kvClient;
-} catch (err) {
-  console.log('ℹ️  Vercel KV not available (this is OK for local dev)');
-}
+let usingKV = false;
+let kvInitialized = false;
+
+(async () => {
+  try {
+    const { kv: kvClient } = await import('@vercel/kv');
+    kv = kvClient;
+    if (kv) {
+      usingKV = true;
+      kvInitialized = true;
+      console.log('✓ Vercel KV initialized for exams');
+    }
+  } catch (err) {
+    console.log('ℹ️  Vercel KV not available for exams, using file-based storage');
+    usingKV = false;
+  }
+})();
 
 // KV key for exams storage
 const EXAMS_KEY = 'examplified:exams';
 
-// In-memory fallback for local development
+// File-based fallback for local development
 let localExamsCache = null;
-let usingKV = false;
-
-async function initKV() {
-  if (!kv) {
-    console.log('ℹ️  Vercel KV not available for exams, using file-based storage (local development)');
-    usingKV = false;
-    return false;
-  }
-  
-  try {
-    // Test KV connection
-    await kv.set('_test_connection', '1', { ex: 1 });
-    usingKV = true;
-    console.log('✓ Vercel KV connected for exams');
-    return true;
-  } catch (err) {
-    console.log('⚠️  Vercel KV connection failed for exams:', err.message);
-    console.log('ℹ️  Using file-based storage as fallback');
-    usingKV = false;
-    return false;
-  }
-}
-
-// Initialize KV on first use (not on module load)
-let kvInitialized = false;
 
 async function loadExams() {
-  // Initialize KV on first call
-  if (!kvInitialized) {
-    await initKV();
-    kvInitialized = true;
-  }
   
   try {
     if (usingKV && kv) {

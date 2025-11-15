@@ -1,14 +1,25 @@
 import crypto from 'crypto';
 
-// Try to import Vercel KV
+// Load Vercel KV if available (production on Vercel)
+// Falls back to in-memory storage otherwise
 let kv = null;
-try {
-  // Direct import - will work on Vercel, fail locally without @vercel/kv installed
-  const { kv: kvClient } = await import('@vercel/kv');
-  kv = kvClient;
-} catch (err) {
-  console.log('ℹ️  Vercel KV not available (this is OK for local dev)');
-}
+let usingKV = false;
+let kvInitialized = false;
+
+(async () => {
+  try {
+    const { kv: kvClient } = await import('@vercel/kv');
+    kv = kvClient;
+    if (kv) {
+      usingKV = true;
+      kvInitialized = true;
+      console.log('✓ Vercel KV initialized');
+    }
+  } catch (err) {
+    console.log('ℹ️  Vercel KV not available, using in-memory storage');
+    usingKV = false;
+  }
+})();
 
 // Keys used in Vercel KV
 const CUSTOMERS_KEY = 'examplified:customers';
@@ -16,39 +27,8 @@ const RECOVERY_TOKENS_KEY = 'examplified:recovery-tokens';
 
 // In-memory fallback for local development when KV is not available
 let localDataCache = null;
-let usingKV = false;
-
-async function initKV() {
-  if (!kv) {
-    console.log('ℹ️  Vercel KV not available, using in-memory storage (local development)');
-    usingKV = false;
-    return false;
-  }
-  
-  try {
-    // Test KV connection
-    await kv.set('_test_connection', '1', { ex: 1 });
-    usingKV = true;
-    console.log('✓ Vercel KV connected');
-    return true;
-  } catch (err) {
-    console.log('⚠️  Vercel KV connection failed:', err.message);
-    console.log('ℹ️  Using in-memory storage as fallback');
-    usingKV = false;
-    return false;
-  }
-}
-
-// Initialize KV on first use (not on module load)
-let kvInitialized = false;
 
 async function load() {
-  // Initialize KV on first call
-  if (!kvInitialized) {
-    await initKV();
-    kvInitialized = true;
-  }
-  
   try {
     if (usingKV && kv) {
       const data = await kv.get(CUSTOMERS_KEY);
